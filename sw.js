@@ -1,11 +1,24 @@
 self.addEventListener("install", (event) => {
   console.log("[SW] Installing...");
-  self.skipWaiting();
+  // Forzar activación inmediata
+  event.waitUntil(self.skipWaiting());
 });
 
 self.addEventListener("activate", (event) => {
   console.log("[SW] Activating...");
-  event.waitUntil(self.clients.claim());
+  // Tomar control de todas las páginas inmediatamente
+  event.waitUntil(
+    self.clients.claim().then(() => {
+      console.log("[SW] Claimed all clients");
+      // Forzar recarga de todas las páginas
+      return self.clients.matchAll().then((clients) => {
+        clients.forEach((client) => {
+          console.log("[SW] Reloading client:", client.url);
+          client.navigate(client.url);
+        });
+      });
+    })
+  );
 });
 
 self.addEventListener("fetch", (event) => {
@@ -21,14 +34,11 @@ self.addEventListener("fetch", (event) => {
   event.respondWith(
     fetch(event.request)
       .then((response) => {
-        // Clonar la respuesta
         const newHeaders = new Headers(response.headers);
-
-        // Añadir los headers necesarios
         newHeaders.set("Cross-Origin-Opener-Policy", "same-origin");
         newHeaders.set("Cross-Origin-Embedder-Policy", "require-corp");
 
-        console.log("[SW] Adding COOP/COEP headers to:", url.pathname);
+        console.log("[SW] Adding headers to:", url.pathname);
 
         return new Response(response.body, {
           status: response.status,
