@@ -3,427 +3,109 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SharedArrayBuffer en GitHub Pages</title>
+    <title>SharedArrayBuffer Test</title>
+    <script src="coi-serviceworker.js"></script>
     <style>
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            font-family: Arial, sans-serif;
             max-width: 800px;
             margin: 50px auto;
             padding: 20px;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-        }
-
-        .container {
-            background: white;
-            border-radius: 10px;
-            padding: 30px;
-            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
-        }
-
-        h1 {
-            color: #333;
-            margin-top: 0;
+            background: #f5f5f5;
         }
 
         .status {
-            padding: 15px;
-            border-radius: 5px;
+            padding: 20px;
+            border-radius: 10px;
             margin: 20px 0;
-            font-weight: bold;
+            font-size: 18px;
         }
 
         .success {
             background: #d4edda;
             color: #155724;
-            border: 1px solid #c3e6cb;
         }
 
         .error {
             background: #f8d7da;
             color: #721c24;
-            border: 1px solid #f5c6cb;
-        }
-
-        .info {
-            background: #d1ecf1;
-            color: #0c5460;
-            border: 1px solid #bee5eb;
-        }
-
-        .warning {
-            background: #fff3cd;
-            color: #856404;
-            border: 1px solid #ffc107;
         }
 
         button {
-            background: #667eea;
+            background: #007bff;
             color: white;
             border: none;
-            padding: 12px 24px;
+            padding: 15px 30px;
+            font-size: 16px;
             border-radius: 5px;
             cursor: pointer;
-            font-size: 16px;
-            margin: 10px 5px;
-            transition: background 0.3s;
+            margin: 10px;
         }
 
         button:hover {
-            background: #764ba2;
+            background: #0056b3;
         }
 
-        button:disabled {
-            background: #ccc;
-            cursor: not-allowed;
-        }
-
-        .demo-area {
-            margin-top: 30px;
-            padding: 20px;
-            background: #f8f9fa;
-            border-radius: 5px;
-        }
-
-        pre {
-            background: #2d2d2d;
-            color: #f8f8f2;
-            padding: 15px;
-            border-radius: 5px;
-            overflow-x: auto;
-            font-size: 12px;
-        }
-
-        .worker-output {
-            margin-top: 10px;
-            padding: 10px;
+        #output {
             background: white;
-            border-left: 4px solid #667eea;
-            min-height: 50px;
-        }
-
-        .code-filename {
-            background: #2d2d2d;
-            color: #ffc107;
-            padding: 5px 10px;
-            font-family: monospace;
-            font-size: 12px;
-            border-radius: 5px 5px 0 0;
-            margin-bottom: 0;
-        }
-
-        .debug-info {
-            font-size: 12px;
-            color: #666;
-            margin-top: 10px;
-            padding: 10px;
-            background: #f8f9fa;
+            padding: 20px;
             border-radius: 5px;
-            font-family: monospace;
+            margin-top: 20px;
+            min-height: 100px;
         }
     </style>
 </head>
 <body>
-    <div class="container">
-        <h1>🚀 SharedArrayBuffer en GitHub Pages</h1>
+    <h1>🚀 SharedArrayBuffer Test</h1>
 
-        <div id="status" class="status info">
-            Verificando compatibilidad...
-        </div>
+    <div id="status" class="status">Verificando...</div>
 
-        <div id="debugInfo" class="debug-info" style="display:none;"></div>
+    <button id="testBtn">Probar SharedArrayBuffer</button>
 
-        <div class="demo-area" id="demoArea" style="display:none;">
-            <h2>Demo: Contador compartido entre Workers</h2>
-            <p>Este ejemplo crea un SharedArrayBuffer que múltiples Web Workers pueden modificar simultáneamente.</p>
-
-            <button id="startDemo">Iniciar Demo</button>
-            <button id="stopDemo" disabled>Detener Demo</button>
-
-            <div class="worker-output" id="output">
-                <em>Presiona "Iniciar Demo" para comenzar...</em>
-            </div>
-        </div>
-
-        <div style="margin-top: 30px;">
-            <h3>📋 Archivos necesarios:</h3>
-
-            <div class="code-filename">📄 sw.js (Service Worker)</div>
-            <pre>self.addEventListener('install', (event) => {
-    console.log('[SW] Installing...');
-    self.skipWaiting();
-});
-
-self.addEventListener('activate', (event) => {
-    console.log('[SW] Activating...');
-    event.waitUntil(self.clients.claim());
-});
-
-self.addEventListener('fetch', (event) => {
-    const url = new URL(event.request.url);
-    
-    // Solo interceptar peticiones del mismo origen
-    if (url.origin !== location.origin) {
-        return;
-    }
-    
-    console.log('[SW] Intercepting:', url.pathname);
-    
-    event.respondWith(
-        fetch(event.request)
-            .then(response => {
-                // Clonar la respuesta
-                const newHeaders = new Headers(response.headers);
-                
-                // Añadir los headers necesarios
-                newHeaders.set('Cross-Origin-Opener-Policy', 'same-origin');
-                newHeaders.set('Cross-Origin-Embedder-Policy', 'require-corp');
-                
-                console.log('[SW] Adding COOP/COEP headers to:', url.pathname);
-                
-                return new Response(response.body, {
-                    status: response.status,
-                    statusText: response.statusText,
-                    headers: newHeaders
-                });
-            })
-            .catch(err => {
-                console.error('[SW] Fetch error:', err);
-                return fetch(event.request);
-            })
-    );
-});</pre>
-
-            <h3>✅ Instrucciones:</h3>
-            <ol>
-                <li>Crea el archivo <code>sw.js</code> con el código de arriba</li>
-                <li>Asegúrate de que esté en el mismo directorio que <code>index.html</code></li>
-                <li>Haz commit y push</li>
-                <li>Espera 1-2 minutos para que GitHub Pages actualice</li>
-                <li><strong>Abre en una pestaña nueva</strong> (no incógnito primero)</li>
-                <li>Si ves "Service Worker registrado", presiona Ctrl+Shift+R</li>
-                <li>Abre DevTools (F12) → Console para ver logs del SW</li>
-            </ol>
-        </div>
-    </div>
+    <div id="output"></div>
 
     <script>
         const statusDiv = document.getElementById('status');
-        const demoArea = document.getElementById('demoArea');
         const output = document.getElementById('output');
-        const startBtn = document.getElementById('startDemo');
-        const stopBtn = document.getElementById('stopDemo');
-        const debugInfo = document.getElementById('debugInfo');
+        const testBtn = document.getElementById('testBtn');
 
-        let workers = [];
-        let sharedBuffer = null;
-        let sharedArray = null;
-        let isRunning = false;
-
-        const workerCode = `
-            self.onmessage = function(e) {
-                const { buffer, index } = e.data;
-                const view = new Int32Array(buffer);
-                
-                const intervalId = setInterval(() => {
-                    const oldValue = Atomics.add(view, 0, 1);
-                    self.postMessage({ 
-                        worker: index, 
-                        value: oldValue + 1 
-                    });
-                }, 100);
-                
-                self.intervalId = intervalId;
-            };
-            
-            self.addEventListener('message', function(e) {
-                if (e.data === 'stop' && self.intervalId) {
-                    clearInterval(self.intervalId);
-                }
-            });
-        `;
-
-        async function checkHeaders() {
-            try {
-                const response = await fetch(location.href);
-                const coop = response.headers.get('cross-origin-opener-policy');
-                const coep = response.headers.get('cross-origin-embedder-policy');
-
-                debugInfo.innerHTML = `
-                    <strong>Debug Info:</strong><br>
-                    COOP: ${coop || 'null'}<br>
-                    COEP: ${coep || 'null'}<br>
-                    SharedArrayBuffer: ${typeof SharedArrayBuffer}<br>
-                    SW Controller: ${navigator.serviceWorker.controller ? 'Yes' : 'No'}
-                `;
-                debugInfo.style.display = 'block';
-
-                return { coop, coep };
-            } catch (e) {
-                console.error('Error checking headers:', e);
-                return { coop: null, coep: null };
-            }
-        }
-
-        async function registerServiceWorker() {
-            if (!('serviceWorker' in navigator)) {
-                statusDiv.className = 'status error';
-                statusDiv.innerHTML = '❌ Tu navegador no soporta Service Workers';
-                return false;
-            }
-
-            try {
-                console.log('[Main] Registering Service Worker...');
-                const registration = await navigator.serviceWorker.register('./sw.js', {
-                    scope: './'
-                });
-
-                console.log('[Main] Service Worker registered:', registration);
-
-                // Esperar a que se active
-                if (registration.active) {
-                    console.log('[Main] SW already active');
-                    return true;
-                }
-
-                return new Promise((resolve) => {
-                    const checkState = (worker) => {
-                        console.log('[Main] SW state:', worker.state);
-                        if (worker.state === 'activated') {
-                            console.log('[Main] SW activated!');
-                            resolve(true);
-                        }
-                    };
-
-                    if (registration.installing) {
-                        registration.installing.addEventListener('statechange', function () {
-                            checkState(this);
-                        });
-                    } else if (registration.waiting) {
-                        checkState(registration.waiting);
-                    } else if (registration.active) {
-                        checkState(registration.active);
-                    }
-                });
-            } catch (error) {
-                console.error('[Main] Error registering Service Worker:', error);
-                statusDiv.className = 'status error';
-                statusDiv.innerHTML = `❌ Error al registrar SW: ${error.message}<br><br>¿Existe el archivo <code>sw.js</code>?`;
-                return false;
-            }
-        }
-
-        async function checkCompatibility() {
-            const swRegistered = await registerServiceWorker();
-            await checkHeaders();
-
-            if (!swRegistered) {
-                return;
-            }
-
-            // Verificar si el SW está controlando la página
-            const isControlled = !!navigator.serviceWorker.controller;
-
+        function checkSAB() {
             if (typeof SharedArrayBuffer !== 'undefined') {
                 statusDiv.className = 'status success';
-                statusDiv.innerHTML = '✅ ¡SharedArrayBuffer disponible! El sitio está cross-origin isolated.';
-                demoArea.style.display = 'block';
-            } else if (isControlled) {
-                // SW está activo pero SharedArrayBuffer no disponible
-                statusDiv.className = 'status warning';
-                statusDiv.innerHTML = `
-                    ⚠️ Service Worker activo pero SharedArrayBuffer no disponible.<br><br>
-                    <strong>Solución:</strong> Haz un <strong>hard refresh</strong> (Ctrl+Shift+R)<br>
-                    Si el problema persiste, revisa la consola (F12) para ver los logs del SW.
-                `;
-
-                const reloadBtn = document.createElement('button');
-                reloadBtn.textContent = 'Hard Refresh (Ctrl+Shift+R)';
-                reloadBtn.onclick = () => location.reload(true);
-                statusDiv.appendChild(document.createElement('br'));
-                statusDiv.appendChild(reloadBtn);
+                statusDiv.textContent = '✅ SharedArrayBuffer disponible!';
+                return true;
             } else {
-                // Primera carga
-                statusDiv.className = 'status info';
-                statusDiv.innerHTML = '⚠️ Service Worker registrado. <strong>Recarga la página</strong> para activarlo.';
-
-                const reloadBtn = document.createElement('button');
-                reloadBtn.textContent = 'Recargar página';
-                reloadBtn.onclick = () => location.reload();
-                statusDiv.appendChild(document.createElement('br'));
-                statusDiv.appendChild(document.createElement('br'));
-                statusDiv.appendChild(reloadBtn);
+                statusDiv.className = 'status error';
+                statusDiv.textContent = '❌ SharedArrayBuffer NO disponible. Recarga la página (Ctrl+Shift+R)';
+                return false;
             }
         }
 
-        function startDemo() {
-            if (typeof SharedArrayBuffer === 'undefined') {
-                output.innerHTML = '<span style="color: red;">SharedArrayBuffer no está disponible</span>';
+        testBtn.addEventListener('click', () => {
+            if (!checkSAB()) {
+                output.innerHTML = '<strong style="color: red;">SharedArrayBuffer no disponible</strong>';
                 return;
             }
 
-            isRunning = true;
-            startBtn.disabled = true;
-            stopBtn.disabled = false;
+            try {
+                // Crear un SharedArrayBuffer
+                const sab = new SharedArrayBuffer(1024);
+                const view = new Int32Array(sab);
+                view[0] = 42;
 
-            sharedBuffer = new SharedArrayBuffer(4);
-            sharedArray = new Int32Array(sharedBuffer);
-            sharedArray[0] = 0;
-
-            output.innerHTML = '<strong>Contador compartido:</strong> <span id="counter">0</span><br><br>';
-
-            const numWorkers = 3;
-            for (let i = 0; i < numWorkers; i++) {
-                const blob = new Blob([workerCode], { type: 'application/javascript' });
-                const workerUrl = URL.createObjectURL(blob);
-                const worker = new Worker(workerUrl);
-
-                worker.onmessage = (e) => {
-                    const counterEl = document.getElementById('counter');
-                    if (counterEl) {
-                        counterEl.textContent = e.data.value;
-                    }
-
-                    const log = document.createElement('div');
-                    log.style.fontSize = '12px';
-                    log.style.color = '#666';
-                    log.textContent = `Worker ${e.data.worker} incrementó a ${e.data.value}`;
-                    output.appendChild(log);
-
-                    const logs = output.querySelectorAll('div');
-                    if (logs.length > 5) {
-                        logs[0].remove();
-                    }
-                };
-
-                worker.postMessage({ buffer: sharedBuffer, index: i });
-                workers.push(worker);
+                output.innerHTML = `
+                    <strong style="color: green;">✅ ¡Funciona!</strong><br><br>
+                    SharedArrayBuffer creado: ${sab.byteLength} bytes<br>
+                    Valor en posición 0: ${view[0]}<br><br>
+                    <code>${sab}</code>
+                `;
+            } catch (e) {
+                output.innerHTML = `<strong style="color: red;">Error: ${e.message}</strong>`;
             }
-        }
+        });
 
-        function stopDemo() {
-            isRunning = false;
-            startBtn.disabled = false;
-            stopBtn.disabled = true;
-
-            workers.forEach(worker => {
-                worker.postMessage('stop');
-                worker.terminate();
-            });
-            workers = [];
-
-            output.innerHTML += '<br><strong>Demo detenida.</strong>';
-        }
-
-        startBtn.addEventListener('click', startDemo);
-        stopBtn.addEventListener('click', stopDemo);
-
-        // Logs para debugging
-        console.log('[Main] Page loaded');
-        console.log('[Main] SharedArrayBuffer:', typeof SharedArrayBuffer);
-        console.log('[Main] SW supported:', 'serviceWorker' in navigator);
-
-        checkCompatibility();
+        // Check inicial
+        setTimeout(checkSAB, 500);
     </script>
 </body>
 </html>
