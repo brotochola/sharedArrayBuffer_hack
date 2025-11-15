@@ -85,6 +85,7 @@
             padding: 15px;
             border-radius: 5px;
             overflow-x: auto;
+            font-size: 12px;
         }
 
         .worker-output {
@@ -94,11 +95,35 @@
             border-left: 4px solid #667eea;
             min-height: 50px;
         }
+
+        .instructions {
+            background: #fff3cd;
+            border: 1px solid #ffc107;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 20px 0;
+        }
+
+        .code-filename {
+            background: #2d2d2d;
+            color: #ffc107;
+            padding: 5px 10px;
+            font-family: monospace;
+            font-size: 12px;
+            border-radius: 5px 5px 0 0;
+            margin-bottom: 0;
+        }
     </style>
 </head>
 <body>
     <div class="container">
         <h1>🚀 SharedArrayBuffer en GitHub Pages</h1>
+
+        <div class="instructions">
+            <strong>⚠️ IMPORTANTE:</strong> Debes crear también el archivo <code>sw.js</code> en el mismo directorio.
+            <br><br>
+            Copia el código que aparece abajo y créalo manualmente en tu repositorio.
+        </div>
 
         <div id="status" class="status info">
             Verificando compatibilidad...
@@ -117,12 +142,41 @@
         </div>
 
         <div style="margin-top: 30px;">
-            <h3>📋 Instrucciones para GitHub Pages:</h3>
+            <h3>📋 Archivos necesarios:</h3>
+
+            <div class="code-filename">📄 sw.js (Service Worker - crear este archivo)</div>
+            <pre>self.addEventListener('fetch', (event) => {
+    event.respondWith(
+        fetch(event.request)
+            .then(response => {
+                const newHeaders = new Headers(response.headers);
+                newHeaders.set('Cross-Origin-Opener-Policy', 'same-origin');
+                newHeaders.set('Cross-Origin-Embedder-Policy', 'require-corp');
+                
+                return new Response(response.body, {
+                    status: response.status,
+                    statusText: response.statusText,
+                    headers: newHeaders
+                });
+            })
+    );
+});
+
+self.addEventListener('install', () => {
+    self.skipWaiting();
+});
+
+self.addEventListener('activate', (event) => {
+    event.waitUntil(self.clients.claim());
+});</pre>
+
+            <h3>✅ Pasos para GitHub Pages:</h3>
             <ol>
-                <li>Copia este archivo HTML a tu repositorio</li>
-                <li>El Service Worker se registrará automáticamente</li>
-                <li>Recarga la página después del primer registro</li>
-                <li>Verifica que SharedArrayBuffer esté disponible</li>
+                <li>Crea un archivo <code>sw.js</code> con el código de arriba</li>
+                <li>Sube este HTML como <code>index.html</code></li>
+                <li>Haz commit y push de ambos archivos</li>
+                <li>Primera visita: verás mensaje de recargar</li>
+                <li>Recarga y SharedArrayBuffer estará disponible ✅</li>
             </ol>
         </div>
     </div>
@@ -139,49 +193,12 @@
         let sharedArray = null;
         let isRunning = false;
 
-        // Service Worker inline
-        const swCode = `
-            self.addEventListener('fetch', (event) => {
-                const url = new URL(event.request.url);
-                
-                // Solo interceptar peticiones del mismo origen
-                if (url.origin === location.origin) {
-                    event.respondWith(
-                        fetch(event.request)
-                            .then(response => {
-                                // Clonar la respuesta para poder modificar headers
-                                const newHeaders = new Headers(response.headers);
-                                newHeaders.set('Cross-Origin-Opener-Policy', 'same-origin');
-                                newHeaders.set('Cross-Origin-Embedder-Policy', 'require-corp');
-                                
-                                return new Response(response.body, {
-                                    status: response.status,
-                                    statusText: response.statusText,
-                                    headers: newHeaders
-                                });
-                            })
-                    );
-                } else {
-                    event.respondWith(fetch(event.request));
-                }
-            });
-            
-            self.addEventListener('install', () => {
-                self.skipWaiting();
-            });
-            
-            self.addEventListener('activate', (event) => {
-                event.waitUntil(self.clients.claim());
-            });
-        `;
-
         // Worker inline que usará el SharedArrayBuffer
         const workerCode = `
             self.onmessage = function(e) {
                 const { buffer, index } = e.data;
                 const view = new Int32Array(buffer);
                 
-                // Incrementar el contador cada 100ms
                 const intervalId = setInterval(() => {
                     const oldValue = Atomics.add(view, 0, 1);
                     self.postMessage({ 
@@ -190,7 +207,6 @@
                     });
                 }, 100);
                 
-                // Guardar el interval ID para poder limpiarlo
                 self.intervalId = intervalId;
             };
             
@@ -204,47 +220,43 @@
         async function registerServiceWorker() {
             if ('serviceWorker' in navigator) {
                 try {
-                    // Crear blob con el código del SW
-                    const blob = new Blob([swCode], { type: 'application/javascript' });
-                    const swUrl = URL.createObjectURL(blob);
-
-                    const registration = await navigator.serviceWorker.register(swUrl);
+                    const registration = await navigator.serviceWorker.register('sw.js');
                     console.log('Service Worker registrado:', registration);
 
-                    // Esperar a que esté activo
                     if (registration.active) {
                         return true;
                     }
 
                     return new Promise((resolve) => {
-                        registration.addEventListener('updatefound', () => {
-                            const newWorker = registration.installing;
-                            newWorker.addEventListener('statechange', () => {
-                                if (newWorker.state === 'activated') {
+                        if (registration.installing) {
+                            registration.installing.addEventListener('statechange', function (e) {
+                                if (e.target.state === 'activated') {
                                     resolve(true);
                                 }
                             });
-                        });
+                        } else if (registration.waiting) {
+                            resolve(true);
+                        }
                     });
                 } catch (error) {
                     console.error('Error registrando Service Worker:', error);
+                    statusDiv.className = 'status error';
+                    statusDiv.innerHTML = `❌ Error: ${error.message}<br><br>¿Creaste el archivo <code>sw.js</code>?`;
                     return false;
                 }
             }
+            statusDiv.className = 'status error';
+            statusDiv.innerHTML = '❌ Tu navegador no soporta Service Workers';
             return false;
         }
 
         async function checkCompatibility() {
-            // Primero registrar el Service Worker
             const swRegistered = await registerServiceWorker();
 
             if (!swRegistered) {
-                statusDiv.className = 'status error';
-                statusDiv.innerHTML = '❌ No se pudo registrar el Service Worker';
                 return;
             }
 
-            // Verificar si ya tenemos SharedArrayBuffer disponible
             if (typeof SharedArrayBuffer !== 'undefined') {
                 statusDiv.className = 'status success';
                 statusDiv.innerHTML = '✅ SharedArrayBuffer está disponible! El sitio está cross-origin isolated.';
@@ -253,7 +265,6 @@
                 statusDiv.className = 'status info';
                 statusDiv.innerHTML = '⚠️ Service Worker registrado. Por favor, <strong>recarga la página</strong> para habilitar SharedArrayBuffer.';
 
-                // Ofrecer botón para recargar
                 const reloadBtn = document.createElement('button');
                 reloadBtn.textContent = 'Recargar página';
                 reloadBtn.onclick = () => location.reload();
@@ -273,14 +284,12 @@
             startBtn.disabled = true;
             stopBtn.disabled = false;
 
-            // Crear SharedArrayBuffer de 4 bytes (1 int32)
             sharedBuffer = new SharedArrayBuffer(4);
             sharedArray = new Int32Array(sharedBuffer);
             sharedArray[0] = 0;
 
             output.innerHTML = '<strong>Contador compartido:</strong> <span id="counter">0</span><br><br>';
 
-            // Crear 3 workers
             const numWorkers = 3;
             for (let i = 0; i < numWorkers; i++) {
                 const blob = new Blob([workerCode], { type: 'application/javascript' });
@@ -290,14 +299,12 @@
                 worker.onmessage = (e) => {
                     document.getElementById('counter').textContent = e.data.value;
 
-                    // Agregar log del worker
                     const log = document.createElement('div');
                     log.style.fontSize = '12px';
                     log.style.color = '#666';
                     log.textContent = `Worker ${e.data.worker} incrementó a ${e.data.value}`;
                     output.appendChild(log);
 
-                    // Mantener solo los últimos 5 logs
                     const logs = output.querySelectorAll('div');
                     if (logs.length > 5) {
                         logs[0].remove();
@@ -326,7 +333,6 @@
         startBtn.addEventListener('click', startDemo);
         stopBtn.addEventListener('click', stopDemo);
 
-        // Inicializar
         checkCompatibility();
     </script>
 </body>
